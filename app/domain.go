@@ -21,15 +21,15 @@ var (
 )
 
 type Domain struct {
-	domain string
-	port   string
+	Domain string `json:"domain"`
+	Port   string `json:"port"`
 	cert   *x509.Certificate
 }
 
 type Status struct {
-	duration int64  `json:"duration"`
-	valid    bool   `json:"valid"`
-	err      string `json:"error"`
+	Duration int64  `json:"duration"`
+	Valid    bool   `json:"valid"`
+	Err      string `json:"error"`
 }
 
 // reverse a hostname (example.com => com.example.). This will provide a better
@@ -52,7 +52,7 @@ func ReverseHost(hostname string) (string, error) {
 }
 
 func (d *Domain) GetCertificate() (*x509.Certificate, error) {
-	conn, err := tls.Dial("tcp", d.domain+":"+d.port, nil)
+	conn, err := tls.Dial("tcp", d.Domain+":"+d.Port, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (d *Domain) GetCertificate() (*x509.Certificate, error) {
 
 	state := conn.ConnectionState()
 	for _, cert := range state.PeerCertificates {
-		if ok := cert.VerifyHostname(d.domain); ok == nil {
+		if ok := cert.VerifyHostname(d.Domain); ok == nil {
 			return cert, nil
 		}
 	}
@@ -91,13 +91,13 @@ func (d *Domain) Check() error {
 }
 
 func (d *Domain) Store(status *Status) error {
-	rhost, err := ReverseHost(d.domain)
+	rhost, err := ReverseHost(d.Domain)
 	if err != nil {
 		return err
 	}
 
 	store := GetStore()
-	bucket := []string{"domains", rhost + ":" + d.port}
+	bucket := []string{"domains", rhost + ":" + d.Port}
 	if err := store.Create(bucket); err != nil {
 		return err
 	}
@@ -121,13 +121,13 @@ func (d *Domain) Store(status *Status) error {
 }
 
 func (d *Domain) Delete() error {
-	rhost, err := ReverseHost(d.domain)
+	rhost, err := ReverseHost(d.Domain)
 	if err != nil {
 		return err
 	}
 
 	store := GetStore()
-	return store.Remove([]string{"domains"}, rhost+":"+d.port)
+	return store.Remove([]string{"domains"}, rhost+":"+d.Port)
 }
 
 func CheckDomain(domain, port string) {
@@ -138,8 +138,8 @@ func CheckDomain(domain, port string) {
 		<-ticker.C
 
 		d := &Domain{
-			domain: domain,
-			port:   port,
+			Domain: domain,
+			Port:   port,
 		}
 
 		start := time.Now()
@@ -147,22 +147,23 @@ func CheckDomain(domain, port string) {
 		err := d.Check()
 		if err != nil {
 			log.Printf("checking domain \"%s:%s\": %s\n", domain, port, err.Error())
-			status.valid = false
-			status.err = err.Error()
+			status.Valid = false
+			status.Err = err.Error()
 		} else {
 			now := time.Now().UTC().Unix()
 			validity := int((d.cert.NotAfter.Unix() - now) / 86400)
 			log.Printf("checking domain \"%s:%s\": certificate is valid for %d days", domain, port, validity)
-			status.valid = true
+			status.Valid = true
 		}
-		status.duration = int64(time.Since(start) / time.Millisecond)
+		status.Duration = int64(time.Since(start) / time.Millisecond)
 
 		// store latest check and certificate
 		d.Store(status)
 	}
 }
 
-func StartDomainChecker() {
+func GetDomains() []*Domain {
+	result := make([]*Domain, 0)
 	store := GetStore()
 	for kv := range store.Scan([]string{"domains"}, "", false) {
 		splitter := strings.Split(kv.Key, ":")
@@ -175,6 +176,14 @@ func StartDomainChecker() {
 			continue
 		}
 
-		go CheckDomain(domain, splitter[1])
+		result = append(result, &Domain{Domain: domain, Port: splitter[1]})
+	}
+
+	return result
+}
+
+func StartDomainChecker() {
+	for _, d := range GetDomains() {
+		go CheckDomain(d.Domain, d.Port)
 	}
 }
