@@ -91,6 +91,39 @@ func getDomainStatus(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+func getDomainCerts(w http.ResponseWriter, r *http.Request) {
+	domain, err := parseDomain(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	current, history, err := domain.CertList()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	type _json struct {
+		Current string   `json:"current"`
+		History []string `json:"history"`
+	}
+	value := &_json{Current: current, History: history}
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
+}
+
 func StartAPIServer(port string) {
 	router := mux.NewRouter()
 
@@ -99,6 +132,7 @@ func StartAPIServer(port string) {
 	api.Path("/domains").Methods("PUT").HandlerFunc(addDomain)
 	api.Path("/domains").Methods("GET").HandlerFunc(getDomains)
 	api.Path("/d/status").Methods("GET").HandlerFunc(getDomainStatus)
+	api.Path("/d/certs").Methods("GET").HandlerFunc(getDomainCerts)
 
 	n := negroni.New(negroni.NewRecovery())
 	n.UseHandler(router)

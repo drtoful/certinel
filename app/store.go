@@ -195,10 +195,10 @@ func (store *Store) Buckets(prefix string) (<-chan *KeyValue, error) {
 // if the end is reached, the channel will return nil.
 // Note that this method does not return an error it will just immediately put nil into
 // the channel if something happened.
-func (store *Store) Scan(bucket []string, prefix string, reverse bool) <-chan *KeyValue {
+func (store *Store) Scan(bucket []string, prefix string, reverse bool, limit int) <-chan *KeyValue {
 	channel := make(chan *KeyValue)
 	go func() {
-		list := make([]*KeyValue, 0)
+		list := make([]*KeyValue, limit)
 		n := 0
 
 		_ = store.db.View(func(tx *bolt.Tx) error {
@@ -213,7 +213,11 @@ func (store *Store) Scan(bucket []string, prefix string, reverse bool) <-chan *K
 			}
 			c := b.Cursor()
 			for k, v := c.Seek(prefix_); bytes.HasPrefix(k, prefix_) && k != nil; {
-				list = append(list, &KeyValue{Key: string(k), Value: string(v)})
+				if limit == 0 {
+					list = append(list, &KeyValue{Key: string(k), Value: string(v)})
+				} else {
+					list[n] = &KeyValue{Key: string(k), Value: string(v)}
+				}
 				n = n + 1
 
 				if reverse {
@@ -221,6 +225,10 @@ func (store *Store) Scan(bucket []string, prefix string, reverse bool) <-chan *K
 					k, v = c.Prev()
 				} else {
 					k, v = c.Next()
+				}
+
+				if n >= limit && limit > 0 {
+					break
 				}
 			}
 

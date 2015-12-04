@@ -104,8 +104,21 @@ func (d *Domain) Store(status *Status) error {
 	}
 
 	if d.cert != nil {
+		id := d.cert.NotBefore.Format(time.RFC3339)
 		data := base64.StdEncoding.EncodeToString(d.cert.Raw)
 		if err := store.Set(bucket, "cert~"+d.cert.SerialNumber.String(), data); err != nil {
+			return err
+		}
+
+		if err := store.Set(bucket, "history~"+id, d.cert.SerialNumber.String()); err != nil {
+			return err
+		}
+
+		if err := store.Set(bucket, "history~~", "-- LIST STOP --"); err != nil {
+			return err
+		}
+
+		if err := store.Set(bucket, "current", d.cert.SerialNumber.String()); err != nil {
 			return err
 		}
 
@@ -154,6 +167,30 @@ func (d *Domain) Delete() error {
 	return store.Remove([]string{"domains"}, rhost+":"+d.Port)
 }
 
+func (d *Domain) CertList() (string, []string, error) {
+	rhost, err := ReverseHost(d.Domain)
+	if err != nil {
+		return "", nil, err
+	}
+
+	store := GetStore()
+	bucket := []string{"domains", rhost + ":" + d.Port}
+	current, err := store.Get(bucket, "current")
+	if err != nil {
+		return "", nil, err
+	}
+
+	his := store.Scan(bucket, "history~", true, 51)
+	history := make([]string, 0)
+	for kv := range his {
+		if len(kv.Value) > 0 {
+			history = append(history, kv.Value)
+		}
+	}
+
+	return current, history[1:], nil
+}
+
 func CheckDomain(domain, port string) {
 	ticker := time.NewTicker(time.Minute * 5)
 	log.Printf("starting domain checker for \"%s:%s\"\n", domain, port)
@@ -190,7 +227,7 @@ func CheckDomain(domain, port string) {
 func GetDomains() []*Domain {
 	result := make([]*Domain, 0)
 	store := GetStore()
-	for kv := range store.Scan([]string{"domains"}, "", false) {
+	for kv := range store.Scan([]string{"domains"}, "", false, 0) {
 		splitter := strings.Split(kv.Key, ":")
 		if len(splitter) != 2 {
 			continue
