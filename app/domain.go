@@ -135,8 +135,6 @@ func CheckDomain(domain, port string) {
 	log.Printf("starting domain checker for \"%s:%s\"\n", domain, port)
 
 	for {
-		<-ticker.C
-
 		d := &Domain{
 			Domain: domain,
 			Port:   port,
@@ -159,6 +157,9 @@ func CheckDomain(domain, port string) {
 
 		// store latest check and certificate
 		d.Store(status)
+
+		// wait for 5 minutes
+		<-ticker.C
 	}
 }
 
