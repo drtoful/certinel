@@ -27,9 +27,10 @@ type Domain struct {
 }
 
 type Status struct {
-	Duration int64  `json:"duration"`
-	Valid    bool   `json:"valid"`
-	Err      string `json:"error"`
+	Duration int64     `json:"check_duration"`
+	Valid    bool      `json:"valid"`
+	Err      string    `json:"error"`
+	Time     time.Time `json:"last_check"`
 }
 
 // reverse a hostname (example.com => com.example.). This will provide a better
@@ -107,17 +108,40 @@ func (d *Domain) Store(status *Status) error {
 		if err := store.Set(bucket, "cert~"+d.cert.SerialNumber.String(), data); err != nil {
 			return err
 		}
-	}
 
-	if status != nil {
-		data, err := json.Marshal(status)
-		if err != nil {
-			return err
+		if status != nil {
+			data, err := json.Marshal(status)
+			if err != nil {
+				return err
+			}
+			if err := store.Set(bucket, "status", string(data)); err != nil {
+				return err
+			}
 		}
-		return store.Set(bucket, "status~"+d.cert.SerialNumber.String(), string(data))
 	}
 
 	return nil
+}
+
+func (d *Domain) Status() (*Status, error) {
+	rhost, err := ReverseHost(d.Domain)
+	if err != nil {
+		return nil, err
+	}
+
+	store := GetStore()
+	bucket := []string{"domains", rhost + ":" + d.Port}
+	value, err := store.Get(bucket, "status")
+	if err != nil {
+		return nil, err
+	}
+
+	data := &Status{}
+	if err := json.Unmarshal([]byte(value), data); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func (d *Domain) Delete() error {
@@ -141,7 +165,7 @@ func CheckDomain(domain, port string) {
 		}
 
 		start := time.Now()
-		status := &Status{}
+		status := &Status{Time: start}
 		err := d.Check()
 		if err != nil {
 			log.Printf("checking domain \"%s:%s\": %s\n", domain, port, err.Error())
