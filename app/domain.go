@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -23,6 +24,12 @@ type Domain struct {
 	domain string
 	port   string
 	cert   *x509.Certificate
+}
+
+type Status struct {
+	duration int64  `json:"duration"`
+	valid    bool   `json:"valid"`
+	err      string `json:"error"`
 }
 
 // reverse a hostname (example.com => com.example.). This will provide a better
@@ -83,14 +90,10 @@ func (d *Domain) Check() error {
 	return nil
 }
 
-func (d *Domain) Store() error {
+func (d *Domain) Store(status *Status) error {
 	rhost, err := ReverseHost(d.domain)
 	if err != nil {
 		return err
-	}
-
-	if d.cert == nil {
-		return ErrNoPeerCertificate
 	}
 
 	store := GetStore()
@@ -99,9 +102,19 @@ func (d *Domain) Store() error {
 		return err
 	}
 
-	data := base64.StdEncoding.EncodeToString(d.cert.Raw)
-	if err := store.Set(bucket, "cert~"+d.cert.SerialNumber.String(), data); err != nil {
-		return err
+	if d.cert != nil {
+		data := base64.StdEncoding.EncodeToString(d.cert.Raw)
+		if err := store.Set(bucket, "cert~"+d.cert.SerialNumber.String(), data); err != nil {
+			return err
+		}
+	}
+
+	if status != nil {
+		data, err := json.Marshal(status)
+		if err != nil {
+			return err
+		}
+		return store.Set(bucket, "status~"+d.cert.SerialNumber.String(), string(data))
 	}
 
 	return nil
@@ -129,14 +142,23 @@ func CheckDomain(domain, port string) {
 			port:   port,
 		}
 
+		start := time.Now()
+		status := &Status{}
 		err := d.Check()
 		if err != nil {
 			log.Printf("checking domain \"%s:%s\": %s\n", domain, port, err.Error())
+			status.valid = false
+			status.err = err.Error()
 		} else {
 			now := time.Now().UTC().Unix()
 			validity := int((d.cert.NotAfter.Unix() - now) / 86400)
 			log.Printf("checking domain \"%s:%s\": certificate is valid for %d days", domain, port, validity)
+			status.valid = true
 		}
+		status.duration = int64(time.Since(start) / time.Millisecond)
+
+		// store latest check and certificate
+		d.Store(status)
 	}
 }
 
