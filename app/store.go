@@ -212,7 +212,7 @@ func (store *Store) Scan(bucket []string, prefix string, reverse bool) <-chan *K
 				prefix_ = []byte(prefix + "~")
 			}
 			c := b.Cursor()
-			for k, v := c.Seek(prefix_); bytes.HasPrefix(k, prefix_); {
+			for k, v := c.Seek(prefix_); bytes.HasPrefix(k, prefix_) && k != nil; {
 				list = append(list, &KeyValue{Key: string(k), Value: string(v)})
 				n = n + 1
 
