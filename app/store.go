@@ -71,7 +71,7 @@ func (store *Store) resolveBucket(tx *bolt.Tx, bucket []string) (*bolt.Bucket, e
 	}
 
 	for i := 1; i < len(bucket); i += 1 {
-		b = b.Bucket([]byte(bucket[1]))
+		b = b.Bucket([]byte(bucket[i]))
 		if b == nil {
 			return nil, ErrInvalidBucket
 		}
@@ -113,20 +113,39 @@ func (store *Store) Get(bucket []string, key string) (value string, err error) {
 }
 
 // create a new bucket
-func (store *Store) Create(bucket []byte) (err error) {
+func (store *Store) Create(bucket []string) (err error) {
 	err = store.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(bucket)
-		return err
+		b, err := tx.CreateBucketIfNotExists([]byte(bucket[0]))
+		if err != nil {
+			return err
+		}
+
+		for i := 1; i < len(bucket); i += 1 {
+			b, err = b.CreateBucketIfNotExists([]byte(bucket[i]))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	return err
 }
 
 // delete a bucket
-func (store *Store) Remove(bucket string) (err error) {
+func (store *Store) Remove(parent []string, bucket string) (err error) {
 	err = store.db.Update(func(tx *bolt.Tx) error {
-		err := tx.DeleteBucket([]byte(bucket))
-		return err
+		if len(parent) == 0 {
+			return tx.DeleteBucket([]byte(bucket))
+		}
+
+		b, err := store.resolveBucket(tx, parent)
+		if err != nil {
+			return err
+		}
+
+		return b.DeleteBucket([]byte(bucket))
 	})
 
 	return err
