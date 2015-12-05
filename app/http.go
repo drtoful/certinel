@@ -52,25 +52,42 @@ func addDomain(w http.ResponseWriter, r *http.Request) {
 
 func getDomains(w http.ResponseWriter, r *http.Request) {
 	domains := GetDomains()
-	type _json struct {
+	type _domain struct {
 		Domain string  `json:"domain"`
 		Port   string  `json:"port"`
 		Status *Status `json:"status"`
 	}
-	result := make([]*_json, 0)
+	type _result struct {
+		Valid   int        `json:"valid"`
+		Invalid int        `json:"invalid"`
+		Domains []*_domain `json:"domains"`
+	}
+
+	result := make([]*_domain, 0)
+	valid := 0
+	invalid := 0
 	for _, d := range domains {
 		status, err := d.Status()
 		if err != nil {
 			continue
 		}
-		result = append(result, &_json{
+		result = append(result, &_domain{
 			Domain: d.Domain,
 			Port:   d.Port,
 			Status: status,
 		})
+		if status.Valid {
+			valid += 1
+		} else {
+			invalid += 1
+		}
 	}
 
-	data, err := json.Marshal(result)
+	data, err := json.Marshal(_result{
+		Valid:   valid,
+		Invalid: invalid,
+		Domains: result,
+	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
