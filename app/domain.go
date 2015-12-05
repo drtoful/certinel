@@ -31,10 +31,11 @@ type Domain struct {
 }
 
 type Status struct {
-	Duration int64     `json:"check_duration"`
-	Valid    bool      `json:"valid"`
-	Err      string    `json:"error"`
-	Time     time.Time `json:"last_check"`
+	Duration int64  `json:"check_duration"`
+	Valid    bool   `json:"valid"`
+	Err      string `json:"last_error"`
+	Time     string `json:"last_check"`
+	Validity int    `json:"valid_days"`
 }
 
 type Subject struct {
@@ -306,7 +307,7 @@ func CheckDomain(domain, port string) {
 		}
 
 		start := time.Now()
-		status := &Status{Time: start}
+		status := &Status{Time: start.UTC().Format(time.RFC3339)}
 		err := d.Check()
 		if err != nil {
 			log.Printf("checking domain \"%s:%s\": %s\n", domain, port, err.Error())
@@ -317,6 +318,7 @@ func CheckDomain(domain, port string) {
 			validity := int((d.cert.NotAfter.Unix() - now) / 86400)
 			log.Printf("checking domain \"%s:%s\": certificate is valid for %d days", domain, port, validity)
 			status.Valid = true
+			status.Validity = validity
 		}
 		status.Duration = int64(time.Since(start) / time.Millisecond)
 
