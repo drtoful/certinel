@@ -2,7 +2,7 @@
 
 Certinel is a small utility that let's you monitor the validity and status of your SSL/TLS enabled websites.
 
-It has been created, because currently [Let's encrypt](https://letsencrypt) certificates are only valid for 90 days and there's no automation or monitoring currently available to check. You can do automation with some cronjobs, but this is probably unreliable so it's better you monitor the status of your certificates. Certinel helps you with that. 
+It has been created, because currently [Let's encrypt](https://letsencrypt.org) certificates are only valid for 90 days and there's no automation or monitoring currently available to check. You can do automation with some cronjobs, but this is probably unreliable so it's better you monitor the status of your certificates. Certinel helps you with that. 
 
 Certinel also provides a simple one-page monitoring page were you can add, remove and check the status of your domains.
 
