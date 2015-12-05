@@ -107,47 +107,12 @@ func getDomainCerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type _json struct {
-		Current string   `json:"current"`
-		History []string `json:"history"`
+		Current *Certificate   `json:"current"`
+		History []*Certificate `json:"history,omitempty"`
 	}
 	value := &_json{Current: current, History: history}
 
 	data, err := json.Marshal(value)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
-}
-
-func getCertInfo(w http.ResponseWriter, r *http.Request) {
-	domain, err := parseDomain(r)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	values := r.URL.Query()
-	serial, ok := values["serial"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(ErrInvalidArgument.Error()))
-		return
-	}
-
-	cert, err := domain.LoadCertificate(serial[0])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	data, err := json.Marshal(cert)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -168,7 +133,6 @@ func StartAPIServer(port string) {
 	api.Path("/domains").Methods("GET").HandlerFunc(getDomains)
 	api.Path("/d/status").Methods("GET").HandlerFunc(getDomainStatus)
 	api.Path("/d/certs").Methods("GET").HandlerFunc(getDomainCerts)
-	api.Path("/c/info").Methods("GET").HandlerFunc(getCertInfo)
 
 	n := negroni.New(negroni.NewRecovery())
 	n.UseHandler(router)

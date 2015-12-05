@@ -242,28 +242,37 @@ func (d *Domain) Delete() error {
 	return store.Remove([]string{"domains"}, rhost+":"+d.Port)
 }
 
-func (d *Domain) CertList() (string, []string, error) {
+func (d *Domain) CertList() (*Certificate, []*Certificate, error) {
 	rhost, err := ReverseHost(d.Domain)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	store := GetStore()
 	bucket := []string{"domains", rhost + ":" + d.Port}
-	current, err := store.Get(bucket, "current")
+	curr, err := store.Get(bucket, "current")
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
+	}
+
+	current, err := d.LoadCertificate(curr)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	his := store.Scan(bucket, "history~", true, 51)
-	history := make([]string, 0)
+	history := make([]*Certificate, 0)
 	for kv := range his {
 		if len(kv.Value) > 0 {
-			history = append(history, kv.Value)
+			cert, err := d.LoadCertificate(kv.Value)
+			if err == nil {
+				history = append(history, cert)
+			}
+			//history = append(history, kv.Value)
 		}
 	}
 
-	return current, history[1:], nil
+	return current, history, nil
 }
 
 func (d *Domain) LoadCertificate(serial string) (*Certificate, error) {
