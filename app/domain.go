@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/miekg/dns"
+	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/miekg/dns"
 )
 
 var (
