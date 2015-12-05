@@ -1,9 +1,12 @@
 package certinel
 
 import (
+	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log"
@@ -36,26 +39,47 @@ type Status struct {
 
 type Subject struct {
 	CommonName         string   `json:"cn"`
-	Country            []string `json:"c"`
-	Organization       []string `json:"o"`
-	OrganizationalUnit []string `json:"ou"`
+	Country            []string `json:"c,omitempty"`
+	Organization       []string `json:"o,omitempty"`
+	OrganizationalUnit []string `json:"ou,omitempty"`
+}
+
+type Signature struct {
+	Algorithm int    `json:"algorithm"`
+	Value     string `json:"value"`
 }
 
 type Certificate struct {
-	NotBefore      time.Time `json:"not_before"`
-	NotAfter       time.Time `json:"not_after"`
-	Issuer         Subject   `json:"issuer"`
-	Subject        Subject   `json:"subject"`
-	SerialNumber   string    `json:"serial"`
-	AlternateNames []string  `json:"alternate_names"`
+	NotBefore      time.Time         `json:"not_before"`
+	NotAfter       time.Time         `json:"not_after"`
+	Issuer         Subject           `json:"issuer"`
+	Subject        Subject           `json:"subject"`
+	SerialNumber   string            `json:"serial"`
+	AlternateNames []string          `json:"alternate_names,omitempty"`
+	Signature      Signature         `json:"signature"`
+	Fingerprints   map[string]string `json:"fingerprints"`
+}
+
+func toHexString(data []byte) string {
+	result := make([]string, len(data))
+	for i := 0; i < len(data); i += 1 {
+		result[i] = hex.EncodeToString(data[i : i+1])
+	}
+	return strings.Join(result, ":")
 }
 
 func convertCert(cert *x509.Certificate) *Certificate {
 	result := &Certificate{
 		NotBefore:      cert.NotBefore.UTC(),
 		NotAfter:       cert.NotAfter.UTC(),
-		SerialNumber:   cert.SerialNumber.String(),
+		SerialNumber:   toHexString(cert.SerialNumber.Bytes()),
 		AlternateNames: cert.DNSNames,
+		Fingerprints:   make(map[string]string),
+	}
+
+	result.Signature = Signature{
+		Value:     toHexString(cert.Signature),
+		Algorithm: int(cert.SignatureAlgorithm),
 	}
 
 	result.Subject = Subject{
@@ -71,6 +95,14 @@ func convertCert(cert *x509.Certificate) *Certificate {
 		Organization:       cert.Issuer.Organization,
 		OrganizationalUnit: cert.Issuer.OrganizationalUnit,
 	}
+
+	s256 := sha256.New()
+	s256.Write(cert.Raw)
+	result.Fingerprints["sha256"] = toHexString(s256.Sum(nil))
+
+	s1 := sha1.New()
+	s1.Write(cert.Raw)
+	result.Fingerprints["sha1"] = toHexString(s1.Sum(nil))
 
 	return result
 }
