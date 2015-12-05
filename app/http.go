@@ -52,35 +52,25 @@ func addDomain(w http.ResponseWriter, r *http.Request) {
 
 func getDomains(w http.ResponseWriter, r *http.Request) {
 	domains := GetDomains()
-
-	data, err := json.Marshal(domains)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
+	type _json struct {
+		Domain string  `json:"domain"`
+		Port   string  `json:"port"`
+		Status *Status `json:"status"`
+	}
+	result := make([]*_json, 0)
+	for _, d := range domains {
+		status, err := d.Status()
+		if err != nil {
+			continue
+		}
+		result = append(result, &_json{
+			Domain: d.Domain,
+			Port:   d.Port,
+			Status: status,
+		})
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
-}
-
-func getDomainStatus(w http.ResponseWriter, r *http.Request) {
-	domain, err := parseDomain(r)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	status, err := domain.Status()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	data, err := json.Marshal(status)
+	data, err := json.Marshal(result)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -144,8 +134,7 @@ func StartAPIServer(port string) {
 	api = api.StrictSlash(true)
 	api.Path("/domains").Methods("PUT").HandlerFunc(addDomain)
 	api.Path("/domains").Methods("GET").HandlerFunc(getDomains)
-	api.Path("/d/status").Methods("GET").HandlerFunc(getDomainStatus)
-	api.Path("/d/certs").Methods("GET").HandlerFunc(getDomainCerts)
+	api.Path("/certs").Methods("GET").HandlerFunc(getDomainCerts)
 
 	router.Path("/").Methods("GET").HandlerFunc(getIndex)
 
