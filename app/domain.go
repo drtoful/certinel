@@ -18,6 +18,7 @@ var (
 	ErrExpired           = errors.New("certificate expired")
 	ErrNotYetValid       = errors.New("certificate not yet valid")
 	ErrInvalidHostname   = errors.New("invalid hostname")
+	ErrNoCertificate     = errors.New("certificate serial not found")
 )
 
 type Domain struct {
@@ -31,6 +32,47 @@ type Status struct {
 	Valid    bool      `json:"valid"`
 	Err      string    `json:"error"`
 	Time     time.Time `json:"last_check"`
+}
+
+type Subject struct {
+	CommonName         string   `json:"cn"`
+	Country            []string `json:"c"`
+	Organization       []string `json:"o"`
+	OrganizationalUnit []string `json:"ou"`
+}
+
+type Certificate struct {
+	NotBefore      time.Time `json:"not_before"`
+	NotAfter       time.Time `json:"not_after"`
+	Issuer         Subject   `json:"issuer"`
+	Subject        Subject   `json:"subject"`
+	SerialNumber   string    `json:"serial"`
+	AlternateNames []string  `json:"alternate_names"`
+}
+
+func convertCert(cert *x509.Certificate) *Certificate {
+	result := &Certificate{
+		NotBefore:      cert.NotBefore.UTC(),
+		NotAfter:       cert.NotAfter.UTC(),
+		SerialNumber:   cert.SerialNumber.String(),
+		AlternateNames: cert.DNSNames,
+	}
+
+	result.Subject = Subject{
+		CommonName:         cert.Subject.CommonName,
+		Country:            cert.Subject.Country,
+		Organization:       cert.Subject.Organization,
+		OrganizationalUnit: cert.Subject.OrganizationalUnit,
+	}
+
+	result.Issuer = Subject{
+		CommonName:         cert.Issuer.CommonName,
+		Country:            cert.Issuer.Country,
+		Organization:       cert.Issuer.Organization,
+		OrganizationalUnit: cert.Issuer.OrganizationalUnit,
+	}
+
+	return result
 }
 
 // reverse a hostname (example.com => com.example.). This will provide a better
@@ -189,6 +231,36 @@ func (d *Domain) CertList() (string, []string, error) {
 	}
 
 	return current, history[1:], nil
+}
+
+func (d *Domain) LoadCertificate(serial string) (*Certificate, error) {
+	rhost, err := ReverseHost(d.Domain)
+	if err != nil {
+		return nil, err
+	}
+
+	store := GetStore()
+	bucket := []string{"domains", rhost + ":" + d.Port}
+	raw, err := store.Get(bucket, "cert~"+serial)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(raw) == 0 {
+		return nil, ErrNoCertificate
+	}
+
+	data, err := base64.StdEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := x509.ParseCertificate(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return convertCert(cert), nil
 }
 
 func CheckDomain(domain, port string) {
