@@ -3,6 +3,7 @@ package certinel
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/codegangsta/negroni"
@@ -124,6 +125,18 @@ func getDomainCerts(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+func getIndex(w http.ResponseWriter, r *http.Request) {
+	data, err := Asset("static/index.html")
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "%s", data)
+}
+
 func StartAPIServer(port string) {
 	router := mux.NewRouter()
 
@@ -133,6 +146,8 @@ func StartAPIServer(port string) {
 	api.Path("/domains").Methods("GET").HandlerFunc(getDomains)
 	api.Path("/d/status").Methods("GET").HandlerFunc(getDomainStatus)
 	api.Path("/d/certs").Methods("GET").HandlerFunc(getDomainCerts)
+
+	router.Path("/").Methods("GET").HandlerFunc(getIndex)
 
 	n := negroni.New(negroni.NewRecovery())
 	n.UseHandler(router)
