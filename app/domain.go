@@ -198,15 +198,15 @@ func (d *Domain) Store(status *Status) error {
 		if err := store.Set(bucket, "current", d.cert.SerialNumber.String()); err != nil {
 			return err
 		}
+	}
 
-		if status != nil {
-			data, err := json.Marshal(status)
-			if err != nil {
-				return err
-			}
-			if err := store.Set(bucket, "status", string(data)); err != nil {
-				return err
-			}
+	if status != nil {
+		data, err := json.Marshal(status)
+		if err != nil {
+			return err
+		}
+		if err := store.Set(bucket, "status", string(data)); err != nil {
+			return err
 		}
 	}
 
