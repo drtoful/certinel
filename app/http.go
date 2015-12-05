@@ -50,6 +50,23 @@ func addDomain(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func deleteDomain(w http.ResponseWriter, r *http.Request) {
+	domain, err := parseDomain(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	if err := domain.Delete(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func getDomains(w http.ResponseWriter, r *http.Request) {
 	domains := GetDomains()
 	type _domain struct {
@@ -151,6 +168,7 @@ func StartAPIServer(port string) {
 	api = api.StrictSlash(true)
 	api.Path("/domains").Methods("PUT").HandlerFunc(addDomain)
 	api.Path("/domains").Methods("GET").HandlerFunc(getDomains)
+	api.Path("/domains").Methods("DELETE").HandlerFunc(deleteDomain)
 	api.Path("/certs").Methods("GET").HandlerFunc(getDomainCerts)
 
 	router.Path("/").Methods("GET").HandlerFunc(getIndex)

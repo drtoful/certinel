@@ -11,6 +11,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -23,6 +24,15 @@ var (
 	ErrInvalidHostname   = errors.New("invalid hostname")
 	ErrNoCertificate     = errors.New("certificate serial not found")
 )
+
+var checkers struct {
+	sync.Mutex
+	state map[string]bool
+}
+
+func init() {
+	checkers.state = make(map[string]bool)
+}
 
 type Domain struct {
 	Domain string `json:"domain"`
@@ -241,7 +251,15 @@ func (d *Domain) Delete() error {
 	}
 
 	store := GetStore()
-	return store.Remove([]string{"domains"}, rhost+":"+d.Port)
+	if err := store.Remove([]string{"domains"}, rhost+":"+d.Port); err != nil {
+		return err
+	}
+
+	checkers.Lock()
+	delete(checkers.state, d.Domain+":"+d.Port)
+	checkers.Unlock()
+
+	return nil
 }
 
 func (d *Domain) CertList() (*Certificate, []*Certificate, error) {
@@ -310,7 +328,20 @@ func CheckDomain(domain, port string) {
 	ticker := time.NewTicker(time.Minute * 5)
 	log.Printf("starting domain checker for \"%s:%s\"\n", domain, port)
 
+	checkers.Lock()
+	checkers.state[domain+":"+port] = true
+	checkers.Unlock()
+
 	for {
+		checkers.Lock()
+		v, ok := checkers.state[domain+":"+port]
+		checkers.Unlock()
+
+		if !v || !ok {
+			log.Printf("stopping check on \"%s:%s\"\n", domain, port)
+			break
+		}
+
 		d := &Domain{
 			Domain: domain,
 			Port:   port,
