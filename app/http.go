@@ -118,7 +118,7 @@ func getDomainCerts(w http.ResponseWriter, r *http.Request) {
 		Current *Certificate   `json:"current"`
 		History []*Certificate `json:"history,omitempty"`
 	}
-	value := &_json{Current: current, History: history}
+	value := &_json{Current: current, History: history[1:]}
 
 	data, err := json.Marshal(value)
 	if err != nil {
