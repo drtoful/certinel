@@ -24,7 +24,7 @@
         <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.min.js"></script>
-        <script>
+        <script type="text/javascript">
 (function() {
 
     filters = angular.module('certinel.filters', []);
@@ -65,6 +65,28 @@
 
             return deferred.promise;
         }
+
+        this.delete = function(domain, port) {
+            var deferred = $q.defer();
+            $http.delete("/api/domains?domain="+domain+"&port="+port).then(function(response) {
+                deferred.resolve(response.data);
+            }, function(response) {
+                deferred.reject(response.data);
+            });
+
+            return deferred.promise;
+        }
+
+        this.create = function(domain, port) {
+            var deferred = $q.defer();
+            $http.put("/api/domains", {domain: domain, port: port}).then(function(response) {
+                deferred.resolve(response.data);
+            }, function(response) {
+                deferred.reject(response.data);
+            });
+
+            return deferred.promise;
+        }
     });
 
     app.controller('DomainsController', function($scope, api) {
@@ -72,8 +94,9 @@
         $scope.invalid = 0;
         $scope.domains = [];
         $scope.domain = null;
+        $scope.formDomain = {};
 
-        this.update = function() {
+        $scope.update = function() {
             $("#spinner").show();
             api.domains().then(function(response) {
                 $scope.valid = response.valid;
@@ -98,11 +121,33 @@
             });
         }
 
-        setInterval(this.update, 30000);
-        this.update();
+        this.removeDomain = function(domain, port) {
+            var c = confirm("Are you sure you want to stop monitoring \""+domain+":"+port+"\"")
+            if (c) {
+                api.delete(domain, port).then(function(response) {
+                    $scope.update();
+                }, function(response) {});
+            }
+        }
+
+        this.addDomain = function(domain, port) {
+            api.create(domain, port).then(function(response) {
+                $scope.update();
+                $("#form").hide();
+                $scope.formDomain = {};
+            }, function(response) {});
+        }
+
+        this.toggle = function() {
+            $("#form").toggle();
+        }
+
+        $("#form").hide();
+        setInterval($scope.update, 30000);
+        $scope.update();
     });
 })()
-        </script>
+       </script>
 
         <div class="container">
             <div class="row">&nbsp;</div>
@@ -110,8 +155,18 @@
             <div class="row" ng-controller="DomainsController as dmsCtrl">
                 <div class="panel panel-default">
                     <div class="panel-heading">
-                        Domain Overview
+                        Domain Overview <a href ng-click="dmsCtrl.toggle()""><i class="fa fa-plus text-success"></i></a>
                         <i id="spinner" class="pull-right fa fa-spin fa-spinner"></i>
+                    </div>
+
+                    <div class="panel-body" id="form">
+                        <form class="form-inline">
+                            <div class="form-group">
+                                <input type="text" class="form-control" ng-model="formDomain.domain" placeholder="Domain" />
+                                <input type="text" class="form-control" ng-model="formDomain.port" placeholder="Port" />
+                                <button ng-click="dmsCtrl.addDomain(formDomain.domain, formDomain.port)" type="button" class="form-control btn btn-success">Add Domain</button>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- Domain Statistics -->
@@ -131,6 +186,8 @@
                     <!-- Domain List -->
                     <ul class="list-group">
                         <li class="list-group-item" ng-repeat="dom in domains">
+                            <a href ng-click="dmsCtrl.removeDomain(dom.domain, dom.port)" class="pull-right timestamp"><i class="fa fa-trash"></i></a>
+
                             <i class="fa fa-check text-success" ng-if="dom.status.valid"></i>
                             <i class="fa fa-times text-danger" ng-if="!dom.status.valid"></i>
                             <a href ng-click="dmsCtrl.setDomain(dom.domain, dom.port)">{{ dom.domain }}:{{ dom.port }}</a>
