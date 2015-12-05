@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>certinel</title>
+
+        <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" />
+        <!--[if lt IE 9]>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+            <script src="//cdnjs.cloudflare.com/ajax/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" />
+        <style>
+            a.timestamp {
+                color: #333;
+            }
+        </style>
+        <base href="/" />
+    </head>
+    <body ng-app="certinel">
+        <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+        <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.6/moment.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.8/angular.min.js"></script>
+        <script>
+(function() {
+
+    filters = angular.module('certinel.filters', []);
+    // convert rfc3339 to momentjs compatible date
+    filters.filter('moment', function() {
+        return function(input) {
+            return moment(input, "YYYY-MM-DDTHH:mm:ssSSSSSSSSZ").fromNow();
+        }
+    });
+
+    app = angular.module('certinel', ['certinel.filters']);
+
+    // first time run
+    app.run([function() {
+        $("#spinner").hide();
+    }]);
+
+    // api service
+    app.service('api', function($http, $q) {
+        this.domains = function() {
+            var deferred = $q.defer();
+            $http.get("/api/domains").then(function(response) {
+                deferred.resolve(response.data);
+            }, function(response) {
+                deferred.reject(response.data);
+            });
+
+            return deferred.promise;
+        }
+
+        this.certs = function(domain, port) {
+            var deferred = $q.defer();
+            $http.get("/api/certs?domain="+domain+"&port="+port).then(function(response) {
+                deferred.resolve(response.data);
+            }, function(response) {
+                deferred.reject(response.data);
+            });
+
+            return deferred.promise;
+        }
+    });
+
+    app.controller('DomainsController', function($scope, api) {
+        $scope.valid = 0;
+        $scope.invalid = 0;
+        $scope.domains = [];
+        $scope.domain = null;
+
+        this.update = function() {
+            $("#spinner").show();
+            api.domains().then(function(response) {
+                $scope.valid = response.valid;
+                $scope.invalid = response.invalid;
+                $scope.domains = response.domains;
+                $("#spinner").hide();
+            }, function(response) {
+                $("#spinner").hide();
+            });
+        }
+
+        this.setDomain = function(domain, port) {
+            api.certs(domain, port).then(function(response) {
+                $scope.domain = {
+                    domain: domain,
+                    port: port,
+                    current: response.current,
+                    history: response.history,
+                }
+            }, function(response) {
+                $scope.domain = null;
+            });
+        }
+
+        setInterval(this.update, 30000);
+        this.update();
+    });
+})()
+        </script>
+
+        <div class="container">
+            <div class="row">&nbsp;</div>
+
+            <div class="row" ng-controller="DomainsController as dmsCtrl">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        Domain Overview
+                        <i id="spinner" class="pull-right fa fa-spin fa-spinner"></i>
+                    </div>
+
+                    <!-- Domain Statistics -->
+                    <table class="table table-bordered">
+                        <tr>
+                            <td class="text-center">
+                                <h1 class="text-success">{{ valid }}</h2>
+                                <p>Valid Domains</p>
+                            </td>
+                            <td class="text-center">
+                                <h1 class="text-danger">{{ invalid }}</h2>
+                                <p>Invalid Domains</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Domain List -->
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="dom in domains">
+                            <i class="fa fa-check text-success" ng-if="dom.status.valid"></i>
+                            <i class="fa fa-times text-danger" ng-if="!dom.status.valid"></i>
+                            <a href ng-click="dmsCtrl.setDomain(dom.domain, dom.port)">{{ dom.domain }}:{{ dom.port }}</a>
+                            <p>
+                                <small>Last checked: <a href class="timestamp"><time is="relative-time" datetime="{{ dom.status.last_check }}" title="{{ dom.status.last_check | date : 'medium' }}">{{ dom.status.last_check | moment }}</time></a></small>
+                                <small ng-if="dom.status.valid">&middot; Valid for: {{ dom.status.valid_days }} days</small>
+                            </p>
+                            <p ng-show="!dom.status.valid" class="text-danger">
+                                <b>Last error:</b> {{ dom.status.last_error }}
+                            </p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="panel panel-default" ng-show="domain">
+                    <div class="panel-heading">
+                        Domain Details: {{ domain.domain }}:{{ domain.port }}
+                    </div>
+
+                    <div class="panel-body">
+                        <p>Details of current certificate</p>
+                        <pre>{{ domain.current | json:3 }}</pre>
+                    </div>
+                </div>
+
+                <div class="panel panel-default" ng-show="domain">
+                    <div class="panel-heading">
+                        Certificate History
+                    </div>
+
+                    <table class="table table-bordered table-condensed" ng-show="domain.history">
+                        <tr>
+                            <th>Subject</th>
+                            <th>Issuer</th>
+                            <th>Serial</th>
+                            <th>Not Before</th>
+                            <th>Not After</th>
+                        </tr>
+                        <tr ng-repeat="d in domain.history">
+                            <td>{{ d.subject.cn }}</td>
+                            <td>{{ d.issuer.cn }}</td>
+                            <td>{{ d.serial }}</td>
+                            <td>{{ d.not_before | date: 'medium' }}</td>
+                            <td>{{ d.not_after | date: 'medium' }}</td>
+                        </tr>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    </body>
+</html>
