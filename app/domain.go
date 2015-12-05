@@ -128,7 +128,9 @@ func ReverseHost(hostname string) (string, error) {
 }
 
 func (d *Domain) GetCertificate() (*x509.Certificate, error) {
-	conn, err := tls.Dial("tcp", d.Domain+":"+d.Port, nil)
+	conn, err := tls.Dial("tcp", d.Domain+":"+d.Port, &tls.Config{
+		InsecureSkipVerify: true, // we check expiration and hostname afterwars, we're only interested in the presented certificate
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +152,7 @@ func (d *Domain) GetCertificate() (*x509.Certificate, error) {
 func (d *Domain) Check() error {
 	cert, err := d.GetCertificate()
 	if err != nil {
-		return nil
+		return err
 	}
 	d.cert = cert
 
@@ -268,7 +270,6 @@ func (d *Domain) CertList() (*Certificate, []*Certificate, error) {
 			if err == nil {
 				history = append(history, cert)
 			}
-			//history = append(history, kv.Value)
 		}
 	}
 
