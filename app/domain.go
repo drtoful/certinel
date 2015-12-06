@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -138,10 +139,22 @@ func ReverseHost(hostname string) (string, error) {
 }
 
 func (d *Domain) GetCertificate() (*x509.Certificate, error) {
-	conn, err := tls.Dial("tcp", d.Domain+":"+d.Port, &tls.Config{
+	// dial the remote server with timeout
+	c, err := net.DialTimeout("tcp", d.Domain+":"+d.Port, time.Second*10)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := tls.Client(c, &tls.Config{
 		InsecureSkipVerify: true, // we check expiration and hostname afterwars, we're only interested in the presented certificate
 	})
-	if err != nil {
+	if conn == nil {
+		return nil, err
+	}
+
+	// make sure the handshake will timeout so the check will return
+	// at some point
+	if err := conn.SetDeadline(time.Now().Add(time.Second * 10)); err != nil {
 		return nil, err
 	}
 
