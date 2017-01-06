@@ -146,7 +146,8 @@ func (d *Domain) GetCertificate() (*x509.Certificate, error) {
 	}
 
 	conn := tls.Client(c, &tls.Config{
-		InsecureSkipVerify: true, // we check expiration and hostname afterwars, we're only interested in the presented certificate
+		InsecureSkipVerify: true,     // we check expiration and hostname afterwars, we're only interested in the presented certificate
+		ServerName:         d.Domain, // Set the ServerName to support checking vHost certs using SNI
 	})
 	if conn == nil {
 		return nil, err

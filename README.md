@@ -8,7 +8,7 @@ Certinel also provides a simple one-page monitoring page were you can add, remov
 
 ## Building
 
-    go get github.com/jteeuwen/go-bindata
+    go get -u github.com/jteeuwen/go-bindata/...
     go get github.com/drtoful/certinel
     go generate github.com/drtoful/certinel
     go install github.com/drtoful/certinel
