@@ -8,6 +8,8 @@ import (
 
 	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/codegangsta/negroni"
 	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/zbindenren/negroni-prometheus"
 )
 
 var (
@@ -172,8 +174,11 @@ func StartAPIServer(port string) {
 	api.Path("/certs").Methods("GET").HandlerFunc(getDomainCerts)
 
 	router.Path("/").Methods("GET").HandlerFunc(getIndex)
+	router.Path("/metrics").Methods("GET").HandlerFunc(promhttp.Handler().ServeHTTP)
 
 	n := negroni.New(negroni.NewRecovery())
+	m := negroniprometheus.NewMiddleware("certinel")
 	n.UseHandler(router)
+	n.Use(m)
 	n.Run(":" + port)
 }

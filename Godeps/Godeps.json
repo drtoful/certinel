@@ -26,6 +26,14 @@
 		{
 			"ImportPath": "github.com/miekg/dns",
 			"Rev": "5a357a6fc5e85268b929350aa6423e2d56dcc4ff"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_golang/prometheus",
+			"Rev": "5cec1d0429b02e4323e042eb04dafdb079ddf568"
+		},
+		{
+			"ImportPath": "github.com/zbindenren/negroni-prometheus",
+			"Rev": "fc4e664b054e13e568e6cacd913d8d238545d88b"
 		}
 	]
 }
