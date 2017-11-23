@@ -16,36 +16,14 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	ErrNoPeerCertificate  = errors.New("peer did not present certificate for domain")
-	ErrExpired            = errors.New("certificate expired")
-	ErrNotYetValid        = errors.New("certificate not yet valid")
-	ErrInvalidHostname    = errors.New("invalid hostname")
-	ErrNoCertificate      = errors.New("certificate serial not found")
-	certificateExpiration = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "certificate_expiration",
-			Help: "Time to certifiate expiration in seconds",
-		},
-		[]string{"domain", "port"},
-	)
-	certificateSuccess = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "certificate_success",
-			Help: "Count of successes retrieving certificate",
-		},
-		[]string{"domain", "port"},
-	)
-	certificateError = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "certificate_error",
-			Help: "Count of errors retrieving certificate",
-		},
-		[]string{"domain", "port"},
-	)
+	ErrNoPeerCertificate = errors.New("peer did not present certificate for domain")
+	ErrExpired           = errors.New("certificate expired")
+	ErrNotYetValid       = errors.New("certificate not yet valid")
+	ErrInvalidHostname   = errors.New("invalid hostname")
+	ErrNoCertificate     = errors.New("certificate serial not found")
 )
 
 var checkers struct {
@@ -55,9 +33,6 @@ var checkers struct {
 
 func init() {
 	checkers.state = make(map[string]bool)
-	prometheus.MustRegister(certificateExpiration)
-	prometheus.MustRegister(certificateSuccess)
-	prometheus.MustRegister(certificateError)
 }
 
 type Domain struct {
@@ -393,15 +368,14 @@ func CheckDomain(domain, port string) {
 			log.Printf("checking domain \"%s:%s\": %s\n", domain, port, err.Error())
 			status.Valid = false
 			status.Err = err.Error()
-			certificateError.With(prometheus.Labels{"domain": d.Domain, "port": d.Port}).Inc()
+			AddMetricPoint(d.Domain, d.Port, 0, err)
 		} else {
 			now := time.Now().UTC().Unix()
 			validity := d.cert.NotAfter.Unix() - now
 			status.Valid = true
 			status.Validity = int(validity / 86400)
 			log.Printf("checking domain \"%s:%s\": certificate is valid for %d days", domain, port, status.Validity)
-			certificateExpiration.With(prometheus.Labels{"domain": d.Domain, "port": d.Port}).Set(float64(validity))
-			certificateSuccess.With(prometheus.Labels{"domain": d.Domain, "port": d.Port}).Inc()
+			AddMetricPoint(d.Domain, d.Port, float64(validity), nil)
 		}
 		status.Duration = int64(time.Since(start) / time.Millisecond)
 
