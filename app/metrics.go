@@ -16,21 +16,32 @@ type MetricProvider interface {
 }
 
 var (
-	promCertificateExpiration = prometheus.NewGaugeVec(
+	currentProvider MetricProvider
+)
+
+type providerPrometheus struct {
+	certificateExpiration *prometheus.GaugeVec
+	certificateSuccess    *prometheus.CounterVec
+	certificateError      *prometheus.CounterVec
+}
+
+func newProviderPrometheus() *providerPrometheus {
+	result := &providerPrometheus{}
+	result.certificateExpiration = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "certificate_expiration",
 			Help: "Time to certifiate expiration in seconds",
 		},
 		[]string{"domain", "port"},
 	)
-	promCertificateSuccess = prometheus.NewCounterVec(
+	result.certificateSuccess = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "certificate_success",
 			Help: "Count of successes retrieving certificate",
 		},
 		[]string{"domain", "port"},
 	)
-	promCertificateError = prometheus.NewCounterVec(
+	result.certificateError = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "certificate_error",
 			Help: "Count of errors retrieving certificate",
@@ -38,25 +49,20 @@ var (
 		[]string{"domain", "port"},
 	)
 
-	currentProvider MetricProvider
-)
+	prometheus.MustRegister(result.certificateExpiration)
+	prometheus.MustRegister(result.certificateSuccess)
+	prometheus.MustRegister(result.certificateError)
 
-func init() {
-	prometheus.MustRegister(promCertificateExpiration)
-	prometheus.MustRegister(promCertificateSuccess)
-	prometheus.MustRegister(promCertificateError)
-}
-
-type providerPrometheus struct {
+	return result
 }
 
 func (p *providerPrometheus) AddMetricError(domain, port string, e error) {
-	promCertificateError.With(prometheus.Labels{"domain": domain, "port": port}).Inc()
+	p.certificateError.With(prometheus.Labels{"domain": domain, "port": port}).Inc()
 }
 
 func (p *providerPrometheus) AddMetric(domain, port string, validity float64) {
-	promCertificateExpiration.With(prometheus.Labels{"domain": domain, "port": port}).Set(validity)
-	promCertificateSuccess.With(prometheus.Labels{"domain": domain, "port": port}).Inc()
+	p.certificateExpiration.With(prometheus.Labels{"domain": domain, "port": port}).Set(validity)
+	p.certificateSuccess.With(prometheus.Labels{"domain": domain, "port": port}).Inc()
 }
 
 func (p *providerPrometheus) GetRouter() *mux.Router {
@@ -81,7 +87,7 @@ func StartMetricsServer(mtype, maddress string) {
 	log.Println(maddress)
 	switch mtype {
 	case "prometheus":
-		currentProvider = &providerPrometheus{}
+		currentProvider = newProviderPrometheus()
 		break
 	}
 
