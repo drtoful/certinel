@@ -83,8 +83,6 @@ func AddMetricPoint(domain, port string, validity float64, e error) {
 }
 
 func StartMetricsServer(mtype, maddress string) {
-	log.Println(mtype)
-	log.Println(maddress)
 	switch mtype {
 	case "prometheus":
 		currentProvider = newProviderPrometheus()
@@ -92,6 +90,7 @@ func StartMetricsServer(mtype, maddress string) {
 	}
 
 	if currentProvider != nil {
+		log.Printf("starting metrics server on %s\n", maddress)
 		n := negroni.New(negroni.NewRecovery())
 		n.UseHandler(currentProvider.GetRouter())
 		go n.Run(maddress)
