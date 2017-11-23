@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/codegangsta/negroni"
-	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/gorilla/mux"
+	"github.com/codegangsta/negroni"
+	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/zbindenren/negroni-prometheus"
 )

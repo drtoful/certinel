@@ -1,10 +1,15 @@
 {
 	"ImportPath": "github.com/drtoful/certinel",
-	"GoVersion": "go1.4",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/beorn7/perks/quantile",
+			"Rev": "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
+		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
 			"Comment": "v1.1.0-19-g0b00eff",
@@ -12,8 +17,12 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/negroni",
-			"Comment": "v0.1-70-gc7477ad",
+			"Comment": "v0.1.0-70-gc7477ad",
 			"Rev": "c7477ad8e330bef55bf1ebe300cf8aa67c492d1b"
+		},
+		{
+			"ImportPath": "github.com/golang/protobuf/proto",
+			"Rev": "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -24,16 +33,62 @@
 			"Rev": "e444e69cbd2e2e3e0749a2f3c717cec491552bbf"
 		},
 		{
+			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+			"Comment": "v1.0.0-2-gc12348c",
+			"Rev": "c12348ce28de40eed0136aa2b644d0ee0650e56c"
+		},
+		{
 			"ImportPath": "github.com/miekg/dns",
 			"Rev": "5a357a6fc5e85268b929350aa6423e2d56dcc4ff"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
+			"Comment": "v0.9.0-pre1-11-g5cec1d0",
 			"Rev": "5cec1d0429b02e4323e042eb04dafdb079ddf568"
 		},
 		{
+			"ImportPath": "github.com/prometheus/client_golang/prometheus/promhttp",
+			"Comment": "v0.9.0-pre1-11-g5cec1d0",
+			"Rev": "5cec1d0429b02e4323e042eb04dafdb079ddf568"
+		},
+		{
+			"ImportPath": "github.com/prometheus/client_model/go",
+			"Comment": "model-0.0.2-16-g99fa1f4",
+			"Rev": "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+		},
+		{
+			"ImportPath": "github.com/prometheus/common/expfmt",
+			"Rev": "2e54d0b93cba2fd133edc32211dcc32c06ef72ca"
+		},
+		{
+			"ImportPath": "github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
+			"Rev": "2e54d0b93cba2fd133edc32211dcc32c06ef72ca"
+		},
+		{
+			"ImportPath": "github.com/prometheus/common/model",
+			"Rev": "2e54d0b93cba2fd133edc32211dcc32c06ef72ca"
+		},
+		{
+			"ImportPath": "github.com/prometheus/procfs",
+			"Rev": "a6e9df898b1336106c743392c48ee0b71f5c4efa"
+		},
+		{
+			"ImportPath": "github.com/prometheus/procfs/xfs",
+			"Rev": "a6e9df898b1336106c743392c48ee0b71f5c4efa"
+		},
+		{
+			"ImportPath": "github.com/urfave/negroni",
+			"Comment": "v0.3.0",
+			"Rev": "5dbbc83f748fc3ad38585842b0aedab546d0ea1e"
+		},
+		{
 			"ImportPath": "github.com/zbindenren/negroni-prometheus",
+			"Comment": "v0.1.0",
 			"Rev": "fc4e664b054e13e568e6cacd913d8d238545d88b"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "a13efeb2fd213cf4be7227992aa54519af3b2ac0"
 		}
 	]
 }

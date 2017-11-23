@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/miekg/dns"
+	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -44,7 +44,7 @@ var (
 			Name: "certificate_error",
 			Help: "Count of errors retrieving certificate",
 		},
-    []string{"domain", "port"},
+		[]string{"domain", "port"},
 	)
 )
 

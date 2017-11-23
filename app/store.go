@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/drtoful/certinel/Godeps/_workspace/src/github.com/boltdb/bolt"
+	"github.com/boltdb/bolt"
 )
 
 const (
