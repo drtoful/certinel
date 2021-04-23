@@ -8,6 +8,8 @@ Certinel also provides a simple one-page monitoring page were you can add, remov
 
 ## Building
 
+Building Certinel requires at least Go 1.16 or higher.
+
     go get -u github.com/drtoful/certinel
 
 ## Running
