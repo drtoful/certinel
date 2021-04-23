@@ -1,13 +1,15 @@
 package main
 
-//go:generate go-bindata -o app/bindata.go -pkg "certinel" static/...
-
 import (
+	_ "embed"
 	"flag"
 	"log"
 
 	"github.com/drtoful/certinel/app"
 )
+
+//go:embed static/index.html
+var indexHtml string
 
 func main() {
 	var (
@@ -24,5 +26,5 @@ func main() {
 
 	certinel.StartDomainChecker()
 	certinel.StartMetricsServer(*metricsType, *metricsBind)
-	certinel.StartAPIServer(*httpPort)
+	certinel.StartAPIServer(*httpPort, indexHtml)
 }

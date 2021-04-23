@@ -1,6 +1,7 @@
 package certinel
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 var (
 	ErrInvalidArgument = errors.New("invalid argument")
+	IndexHtml          string
 )
 
 func parseDomain(r *http.Request) (*Domain, error) {
@@ -150,18 +152,13 @@ func getDomainCerts(w http.ResponseWriter, r *http.Request) {
 }
 
 func getIndex(w http.ResponseWriter, r *http.Request) {
-	data, err := Asset("static/index.html")
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "%s", data)
+	fmt.Fprint(w, IndexHtml)
 }
 
-func StartAPIServer(port string) {
+func StartAPIServer(port, indexHtml string) {
+	IndexHtml = indexHtml // Copy the indexHtml from main to the package global here
 	router := mux.NewRouter()
 
 	api := router.PathPrefix("/api").Subrouter()
